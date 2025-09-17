@@ -1,0 +1,266 @@
+/*
+    WEEK 6 - PRACTICE AT HOME 1
+    models > productModel.js
+*/
+
+const mongoose = require('mongoose');
+
+const productSchema = new mongoose.Schema({
+    name: {
+        type: String,
+        required: [true, 'Product name is required']
+    },
+    price: {
+        type: Number,
+        required: [true, 'Product price is required']
+    },
+    category: {
+        type: String,
+        required: [true, 'Product category is required']
+    },
+    inStock: {
+        type: Boolean,
+        default: true
+    }
+}, { timestamps: true });
+
+module.exports = mongoose.model('Product', productSchema);
+
+
+/*
+    WEEK 6 - PRACTICE AT HOME 1
+    controllers > productController.js
+*/
+
+const Product = require('../models/productModel');
+
+const createProduct = async (req, res, next) => {
+    try {
+        const { name, price, category, inStock } = req.body;
+
+        if (!name || !price || !category) {
+            throw new Error('Database Error');
+        }
+
+        const product = new Product({ name, price, category, inStock });
+        const savedProduct = await product.save();
+
+        res.status(201).json(savedProduct);
+    } catch (err) {
+        next(err);
+    }
+};
+
+const getAllProducts = async (req, res, next) => {
+    try {
+        const products = await Product.find();
+        res.status(200).json(products);
+    } catch (err) {
+        next(err);
+    }
+};
+
+module.exports = { createProduct, getAllProducts };
+
+/*
+    WEEK 6 - PRACTICE AT HOME 1
+    routers > productRoutes.js
+*/
+
+const express = require('express');
+const router = express.Router();
+const { createProduct, getAllProducts } = require('../controllers/productController');
+
+router.post('/', createProduct);
+router.get('/', getAllProducts);
+
+module.exports = router;
+
+
+
+/*
+    WEEK 6 - PRACTICE AT HOME 1
+    middlewares > errorHandler.js
+*/
+
+const errorHandler = (err, req, res, next) => {
+    console.error(err.stack);
+    const statusCode = 500;
+
+    res.status(statusCode).json({
+        error: {
+            message: err.message,
+            stack: process.env.NODE_ENV === 'production' ? null : err.stack
+        }
+    });
+};
+
+module.exports = errorHandler;
+
+
+
+/*
+    WEEK 6 - PRACTICE AT HOME 1
+    index.js
+*/
+
+const express = require('express');
+const mongoose = require('mongoose');
+const productRoutes = require('./routers/productRoutes');
+const errorHandler = require('./middlewares/errorHandler');
+
+const app = express();
+app.use(express.json());
+
+mongoose.connect("mongodb://127.0.0.1:27017/productsDB", {
+    useNewUrlParser: true,
+    useUnifiedTopology: true
+})
+.then(() => console.log('MongoDB connected successfully'))
+.catch(err => console.error(err));
+
+app.use('/products', productRoutes);
+app.use(errorHandler);
+
+app.listen(8080, () => {
+    console.log('Server running on port 8080');
+});
+
+
+
+---
+/*
+    WEEK 6 - PRACTICE AT HOME 2
+    models > movieModel.js
+*/
+
+const mongoose = require('mongoose');
+
+const movieSchema = new mongoose.Schema({
+    title: {
+        type: String,
+        required: true
+    },
+    director: {
+        type: String,
+        required: true
+    },
+    releaseYear: {
+        type: Number,
+        required: true
+    },
+    genre: {
+        type: String,
+        required: true
+    }
+});
+
+const Movie = mongoose.model('Movie', movieSchema);
+module.exports = Movie;
+
+
+/*
+    WEEK 6 - PRACTICE AT HOME 2
+    controllers > movieController.js
+*/
+
+const Movie = require('../models/movieModel');
+
+const createMovie = async (req, res) => {
+    try {
+        const { title, director, releaseYear, genre } = req.body;
+
+        const newMovie = new Movie({ title, director, releaseYear, genre });
+        const savedMovie = await newMovie.save();
+
+        res.status(201).json(savedMovie);
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+};
+
+const getAllMovies = async (req, res) => {
+    try {
+        const movies = await Movie.find();
+        res.status(200).json(movies);
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+};
+
+const getMovieById = async (req, res) => {
+    try {
+        const movie = await Movie.findById(req.params.id);
+        if (!movie) return res.status(404).json({ message: "Movie not found" });
+
+        res.status(200).json(movie);
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+};
+
+const updateMovie = async (req, res) => {
+    try {
+        const movie = await Movie.findByIdAndUpdate(req.params.id, req.body, { new: true, runValidators: true });
+        if (!movie) return res.status(404).json({ message: "Movie not found" });
+
+        res.status(200).json(movie);
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+};
+
+const deleteMovie = async (req, res) => {
+    try {
+        const movie = await Movie.findByIdAndDelete(req.params.id);
+        if (!movie) return res.status(404).json({ message: "Movie not found" });
+
+        res.status(200).json({ message: "Movie deleted successfully" });
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
+};
+
+module.exports = { createMovie, getAllMovies, getMovieById, updateMovie, deleteMovie };
+
+
+
+/*
+    WEEK 6 - PRACTICE AT HOME 2
+    routers > movieRoutes.js
+*/
+
+const express = require('express');
+const r = express.Router();
+const { createMovie, getAllMovies, getMovieById, updateMovie, deleteMovie } = require('../controllers/movieController');
+
+r.post('/movies', createMovie);
+r.get('/movies', getAllMovies);
+r.get('/movies/:id', getMovieById);
+r.put('/movies/:id', updateMovie);
+r.delete('/movies/:id', deleteMovie);
+
+module.exports = r;
+
+
+/*
+    WEEK 6 - PRACTICE AT HOME 2
+    index.js
+*/
+
+const express = require('express');
+const mongoose = require('mongoose');
+const movieRoutes = require('./routers/movieRoutes');
+
+const app = express();
+app.use(express.json());
+
+mongoose.connect('mongodb://127.0.0.1:27017/movieDB')
+    .catch(e => console.log(e));
+
+app.use('/movies', movieRoutes);
+
+app.listen(8080, () => {
+    console.log('Server running on port 8080');
+});
+
